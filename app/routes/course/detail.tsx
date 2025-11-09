@@ -7,7 +7,7 @@ import { Input } from '~/components/ui/input';
 import { useEffect, useRef } from 'react';
 import { Button } from '~/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '~/components/ui/collapsible';
-import { getRandomStudent } from '~/lib/random';
+import { DEFAULT_WEIGHT, getRandomStudent } from '~/lib/random';
 
 export const clientLoader = async ({ params }: Route.ClientLoaderArgs) => {
   const db = await getDb();
@@ -35,7 +35,7 @@ export const clientAction = async ({ request, params }: Route.ClientActionArgs) 
   }
   if (action === 'add') {
     const studentName = formData.get('studentName') as string;
-    course.students.push({ id: uuidv4(), name: studentName, weight: 1, calls: [] });
+    course.students.push({ id: uuidv4(), name: studentName, weight: DEFAULT_WEIGHT, calls: [] });
   } else if (action === 'remove') {
     const studentId = formData.get('studentId') as string;
     course.students = course.students.filter((student: any) => student.id !== studentId);
@@ -44,6 +44,7 @@ export const clientAction = async ({ request, params }: Route.ClientActionArgs) 
     course.students = course.students.map(s => {
       if (s.id === student.id) {
         s.calls.push({ timestamp: Date.now(), assessment: 'neutral', answered: false });
+        s.weight = (1 / DEFAULT_WEIGHT) ** s.calls.length;
       }
       return s;
     });
@@ -90,16 +91,19 @@ export default function CourseList({ loaderData: { course }, actionData }: Route
           </CollapsibleTrigger>
           <CollapsibleContent>
             <ul className="flex-flex-col mt-4">
-              {course.students?.map((student: any) => (
+              {course.students?.map(student => (
                 <li key={student.id} className="w-56">
                   <Form
                     method="post"
                     className="bg-gray-100 rounded-md px-2 py-1 my-1 flex justify-between items-center"
                   >
-                    {student.name} <input type="hidden" name="studentId" value={student.id} />{' '}
+                    <span>
+                      {student.name} ({student.weight})
+                    </span>
                     <Button name="_action" value="remove" variant="ghost" size="sm" type="submit">
                       X
                     </Button>
+                    <input type="hidden" name="studentId" value={student.id} />
                   </Form>
                 </li>
               ))}
